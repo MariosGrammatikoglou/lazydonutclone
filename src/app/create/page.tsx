@@ -1,4 +1,4 @@
-import CreateLobbyClient from './CreateLobbyClient';
+import CreateLobbyClient from "./CreateLobbyClient";
 
 type CreatePageProps = {
   searchParams: Promise<{ username?: string }>;
