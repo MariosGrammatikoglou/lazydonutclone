@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import { updateLobbySettings } from '@/lib/gameStore';
 
 export async function POST(req: Request) {
-  const { lobbyCode, hostId, civilians, undercovers, mrWhites } =
-    await req.json();
+  const body = await req.json().catch(() => ({} as any));
+  const { lobbyCode, hostId, civilians, undercovers, mrWhites } = body ?? {};
 
   if (!lobbyCode || !hostId) {
     return NextResponse.json(
@@ -12,32 +12,15 @@ export async function POST(req: Request) {
     );
   }
 
-  const settings = {
-    civilians: Number(civilians),
-    undercovers: Number(undercovers),
-    mrWhites: Number(mrWhites),
-  };
+  const lobby = await updateLobbySettings(lobbyCode, hostId, {
+    civilians: Number(civilians ?? 0),
+    undercovers: Number(undercovers ?? 0),
+    mrWhites: Number(mrWhites ?? 0),
+  });
 
-  const total =
-    settings.civilians + settings.undercovers + settings.mrWhites;
-  if (total <= 0) {
-    return NextResponse.json(
-      { error: 'Total roles must be > 0' },
-      { status: 400 }
-    );
-  }
-
-  const lobby = await updateLobbySettings(
-    lobbyCode,
-    hostId,
-    settings
-  );
   if (!lobby) {
     return NextResponse.json(
-      {
-        error:
-          'Lobby not found, you are not the host, or the game already started',
-      },
+      { error: 'Could not update settings (are you the host? is lobby waiting?)' },
       { status: 400 }
     );
   }

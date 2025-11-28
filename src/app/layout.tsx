@@ -1,10 +1,9 @@
-// app/layout.tsx
-import './globals.css';
 import type { Metadata } from 'next';
+import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Lazy Donut Undercover',
-  description: 'Simple online Undercover game with lobbies',
+  title: 'LazyDonut Undercover',
+  description: 'Lightweight online Undercover / Mr White party game',
 };
 
 export default function RootLayout({
@@ -14,15 +13,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>
-        <div className="app-root">
-          <header className="app-header">
-            <h1>Lazy Donut Undercover</h1>
-          </header>
-          <main className="app-main">{children}</main>
-          <footer className="app-footer">
-            <small>Play Undercover with your friends 🎮</small>
-          </footer>
+      <body className="bg-slate-950 text-slate-100">
+        <div className="page-shell">
+          {children}
         </div>
       </body>
     </html>

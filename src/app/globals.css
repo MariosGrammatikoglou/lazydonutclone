@@ -1,139 +1,171 @@
 @import "tailwindcss";
 
-/* app/globals.css */
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
-    sans-serif;
+/* -------------------------------------------------
+   GLOBAL RESET / BASE
+--------------------------------------------------- */
+
+html,
+body {
+  @apply min-h-screen;
 }
 
 body {
-  background: #111827;
-  color: #e5e7eb;
-  min-height: 100vh;
+  @apply bg-slate-950 text-slate-100 antialiased;
 }
 
-.app-root {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+/* On screens >= sm: lock scrolling (100vh feel for desktop/tablet) */
+@screen sm {
+  body {
+    @apply overflow-hidden;
+  }
 }
 
-.app-header,
-.app-footer {
-  text-align: center;
-  padding: 1rem;
-  background: #020617;
+/* Page container used in layout.tsx */
+.page-shell {
+  @apply min-h-screen flex items-center justify-center p-4 sm:p-6;
 }
 
-.app-header h1 {
-  font-size: 1.5rem;
+/* -------------------------------------------------
+   DISCORD THEME COLORS (CSS VARIABLES)
+--------------------------------------------------- */
+
+:root {
+  --bg-main: #020617;          /* slate-950-ish */
+  --bg-card: #02081a;          /* dark navy */
+  --bg-card-soft: #050816;
+  --border-subtle: #1e293b;    /* slate-800 */
+  --accent: #6366f1;           /* indigo-500 */
+  --accent-soft: #4f46e5;      /* indigo-600 */
+  --accent-muted: #818cf8;     /* indigo-400 */
+  --danger: #f97373;
+  --text-main: #e5e7eb;        /* gray-200 */
+  --text-muted: #9ca3af;       /* gray-400 */
+  --badge-bg: #111827;
 }
 
-.app-main {
-  flex: 1;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 2rem 1rem;
+/* -------------------------------------------------
+   GRADIENT BRAND TEXT
+--------------------------------------------------- */
+
+.text-gradient-brand {
+  @apply bg-gradient-to-r from-cyan-300 via-sky-400 to-pink-400 
+         bg-clip-text text-transparent;
 }
+
+/* -------------------------------------------------
+   CARD COMPONENT
+--------------------------------------------------- */
 
 .card {
-  background: #020617;
-  border-radius: 12px;
-  padding: 1.5rem;
-  max-width: 480px;
-  width: 100%;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+  @apply w-full max-w-3xl mx-auto rounded-2xl 
+         bg-slate-900/80 border border-slate-800/80 
+         shadow-2xl shadow-slate-950/70 
+         p-6 sm:p-8 md:p-9;
+}
+
+/* Titles inside card */
+.card h1 {
+  @apply text-2xl sm:text-3xl font-semibold text-slate-50 tracking-tight mb-1;
 }
 
 .card h2 {
-  font-size: 1.2rem;
-  margin-bottom: 1rem;
+  @apply text-xl sm:text-2xl font-semibold text-slate-50 tracking-tight mb-1;
 }
 
-.form-group {
-  margin-bottom: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+.card h3 {
+  @apply text-xs sm:text-sm font-semibold text-slate-300 tracking-wide uppercase mb-1;
 }
 
-label {
-  font-size: 0.9rem;
-  color: #9ca3af;
-}
-
-input,
-select {
-  padding: 0.5rem 0.75rem;
-  border-radius: 8px;
-  border: 1px solid #374151;
-  background: #020617;
-  color: #e5e7eb;
-}
-
-input::placeholder {
-  color: #6b7280;
-}
+/* -------------------------------------------------
+   BUTTONS
+--------------------------------------------------- */
 
 button {
-  border-radius: 999px;
-  border: none;
-  padding: 0.6rem 1rem;
-  font-size: 0.95rem;
-  cursor: pointer;
-  background: #22c55e;
-  color: #022c22;
-  font-weight: 600;
+  @apply outline-none;
 }
 
-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.button-primary {
+  @apply inline-flex items-center justify-center rounded-xl 
+         bg-gradient-to-r from-indigo-500 to-violet-500 
+         hover:from-indigo-400 hover:to-violet-400
+         text-white font-semibold px-5 py-2.5 
+         text-sm sm:text-base
+         shadow-lg shadow-indigo-900/40
+         transition-transform transition-shadow
+         hover:-translate-y-[1px]
+         disabled:opacity-50 disabled:cursor-not-allowed;
 }
 
 .button-secondary {
-  background: #1f2937;
-  color: #e5e7eb;
+  @apply inline-flex items-center justify-center rounded-xl 
+         bg-slate-800/90 hover:bg-slate-700
+         border border-slate-700/80
+         text-slate-100 font-medium px-3.5 py-2 
+         text-xs sm:text-sm
+         shadow-sm shadow-slate-950/40
+         transition
+         disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+/* -------------------------------------------------
+   FORMS
+--------------------------------------------------- */
+
+label {
+  @apply block text-[0.7rem] sm:text-xs font-semibold tracking-wide text-slate-300 mb-1;
+}
+
+input {
+  @apply w-full rounded-lg bg-slate-900/70 border border-slate-700/70 
+         px-3 py-2.5 text-sm sm:text-base text-slate-100 
+         placeholder:text-slate-500
+         focus:outline-none focus:ring-2 focus:ring-indigo-500 
+         focus:border-indigo-500;
+}
+
+/* -------------------------------------------------
+   ERROR MESSAGE
+--------------------------------------------------- */
+
+.error {
+  @apply mt-2 mb-3 rounded-lg border border-red-500/70 
+         bg-red-950/60 text-red-100 
+         text-sm px-3 py-2;
+}
+
+/* -------------------------------------------------
+   BADGES (You / Host / Out / Order)
+--------------------------------------------------- */
+
+.badge {
+  @apply inline-flex items-center gap-1 rounded-full 
+         bg-slate-800/90 px-2.5 py-0.5 
+         text-[0.7rem] font-semibold 
+         uppercase tracking-wide text-slate-300;
+}
+
+/* -------------------------------------------------
+   LAYOUT HELPERS
+--------------------------------------------------- */
+
+.form-row {
+  @apply flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between;
 }
 
 .button-row {
-  display: flex;
-  gap: 0.75rem;
+  @apply mt-4 flex flex-col gap-2 sm:flex-row sm:items-center;
 }
 
-.error {
-  color: #f87171;
-  font-size: 0.85rem;
-  margin-top: 0.25rem;
-}
+/* -------------------------------------------------
+   SCROLLBARS
+--------------------------------------------------- */
 
-.lobby-players {
-  margin-top: 1rem;
-  padding: 0.75rem;
-  background: #020617;
-  border-radius: 8px;
-  border: 1px solid #1f2937;
+::-webkit-scrollbar {
+  width: 8px;
 }
-
-.lobby-players ul {
-  list-style: none;
-  margin-top: 0.5rem;
+::-webkit-scrollbar-track {
+  @apply bg-slate-950;
 }
-
-.lobby-players li {
-  padding: 0.2rem 0;
-  font-size: 0.9rem;
-}
-
-.badge {
-  display: inline-block;
-  padding: 0.1rem 0.5rem;
-  border-radius: 999px;
-  background: #1f2937;
-  font-size: 0.75rem;
-  margin-left: 0.25rem;
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-700 rounded-full;
 }

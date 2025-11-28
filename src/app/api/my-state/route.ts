@@ -5,8 +5,8 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({} as any));
   const { lobbyCode, playerId } = body ?? {};
 
+  // If missing data, just return a neutral state
   if (!lobbyCode || !playerId) {
-    // Return a harmless empty state instead of 400
     return NextResponse.json({
       lobbyStatus: 'waiting',
       winner: null,
@@ -23,10 +23,19 @@ export async function POST(req: Request) {
 
   const result = await getPlayerState(lobbyCode, playerId);
   if (!result) {
-    return NextResponse.json(
-      { error: 'Player or lobby not found' },
-      { status: 404 }
-    );
+    // Player might have been kicked or lobby deleted -> return harmless 200
+    return NextResponse.json({
+      lobbyStatus: 'waiting',
+      winner: null,
+      player: {
+        id: playerId,
+        name: '',
+        role: undefined,
+        word: null,
+        isHost: false,
+        isEliminated: true,
+      },
+    });
   }
 
   const { lobby, player } = result;

@@ -1,8 +1,10 @@
+// src/app/api/kick-player/route.ts
 import { NextResponse } from 'next/server';
-import { eliminatePlayer, getLobby } from '@/lib/gameStore';
+import { eliminatePlayer } from '@/lib/gameStore';
 
 export async function POST(req: Request) {
-  const { lobbyCode, hostId, targetId } = await req.json();
+  const body = await req.json().catch(() => ({} as any));
+  const { lobbyCode, hostId, targetId } = body ?? {};
 
   if (!lobbyCode || !hostId || !targetId) {
     return NextResponse.json(
@@ -11,25 +13,10 @@ export async function POST(req: Request) {
     );
   }
 
-  const lobby = await getLobby(lobbyCode);
-  if (!lobby) {
-    return NextResponse.json(
-      { error: 'Lobby not found' },
-      { status: 404 }
-    );
-  }
-
-  if (lobby.hostId !== hostId) {
-    return NextResponse.json(
-      { error: 'Only the host can kick players' },
-      { status: 403 }
-    );
-  }
-
-  const result = await eliminatePlayer(lobbyCode, targetId);
+  const result = await eliminatePlayer(lobbyCode, hostId, targetId);
   if (!result) {
     return NextResponse.json(
-      { error: 'Could not eliminate player' },
+      { error: 'Could not execute player' },
       { status: 400 }
     );
   }
@@ -37,7 +24,5 @@ export async function POST(req: Request) {
   return NextResponse.json({
     ok: true,
     mrWhiteNeedsGuess: result.mrWhiteNeedsGuess,
-    lobbyStatus: result.lobby.status,
-    winner: result.lobby.winner,
   });
 }

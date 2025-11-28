@@ -15,16 +15,19 @@ export async function GET(
     );
   }
 
-  return NextResponse.json({
-    code: lobby.code,
-    status: lobby.status,
-    winner: lobby.winner,
-    settings: lobby.settings,
-    players: lobby.players.map((p) => ({
-      id: p.id,
-      name: p.name,          // 👈 includes username
-      isHost: p.isHost,
-      isEliminated: p.isEliminated,
-    })),
-  });
+ return NextResponse.json({
+  code: lobby.code,
+  status: lobby.status,
+  winner: lobby.winner,
+  pendingMrWhiteId: lobby.pendingMrWhiteId ?? null, // 👈
+  settings: lobby.settings,
+  players: lobby.players.map((p) => ({
+    id: p.id,
+    name: p.name,
+    isHost: p.isHost,
+    isEliminated: p.isEliminated,
+    order: p.talkOrder ?? null, // 👈 for speaking order
+  })),
+});
+
 }
