@@ -11,7 +11,9 @@ type LobbyPlayer = {
   name: string;
   isHost: boolean;
   isEliminated: boolean;
-  talkOrder?: number | null; // speaking order (talkOrder in backend)
+  // API might send either `order` or `talkOrder`, support both:
+  order?: number | null;
+  talkOrder?: number | null;
 };
 
 type LobbySummary = {
@@ -308,24 +310,38 @@ export default function LobbyClient({
   const isPendingMrWhite =
     lobby.pendingMrWhiteId && lobby.pendingMrWhiteId === my.id;
 
-  // sort players by talkOrder (speaking order)
+  // Unified display order: prefer talkOrder if present, else order
+  const getDisplayOrder = (p: LobbyPlayer): number | null => {
+    const t = p.talkOrder ?? null;
+    const o = p.order ?? null;
+    return t ?? o;
+  };
+
+  // sort players by speaking order
   const sortedPlayers = [...lobby.players].sort((a, b) => {
-    const ao = a.talkOrder ?? 9999;
-    const bo = b.talkOrder ?? 9999;
+    const ao = getDisplayOrder(a) ?? 9999;
+    const bo = getDisplayOrder(b) ?? 9999;
     return ao - bo;
   });
 
-  // role + word colors
-  const roleColorClass =
-    my.role === 'civilian'
-      ? 'text-emerald-300'
-      : my.role === 'undercover'
-      ? 'text-red-400'
-      : my.role === 'mrwhite'
-      ? 'text-slate-50'
-      : 'text-slate-100';
+  // Visible role text:
+  // - Mr White sees "Mr White"
+  // - Civilians & Undercovers see "Civilian / Undercover"
+  // - If role not assigned yet: "Unknown"
+  const visibleRoleText =
+    my.role === 'mrwhite'
+      ? 'Mr White'
+      : my.role
+      ? 'Civilian / Undercover'
+      : 'Unknown';
 
-  const wordColorClass = roleColorClass;
+  // Role color: only special for Mr White, others neutral
+  const roleColorClass =
+    my.role === 'mrwhite' ? 'text-slate-50' : 'text-slate-100';
+
+  // Word color: neutral so it doesn’t reveal civilian vs undercover
+  const wordColorClass =
+    my.role === 'mrwhite' ? 'text-slate-50' : 'text-indigo-300';
 
   // winner styling (emoji on the RIGHT, civilians = 🍩)
   let winnerLabel = '';
@@ -403,52 +419,55 @@ export default function LobbyClient({
           </div>
 
           <div className="flex flex-col gap-2 max-h-64 overflow-y-auto pr-1">
-            {sortedPlayers.map((p) => (
-              <div
-                key={p.id}
-                className="flex items-center justify-between gap-2 rounded-xl 
-                           bg-slate-900/80 border border-slate-800/80 
-                           px-3 py-2.5 md:px-4 md:py-3"
-              >
-                <div className="flex items-center gap-2">
-                  {p.talkOrder != null && (
-                    <span className="badge">#{p.talkOrder}</span>
-                  )}
-                  <span className="text-base md:text-lg font-medium">
-                    {p.name}
-                  </span>
-                  {p.id === my.id && <span className="badge">You</span>}
-                  {p.isHost && <span className="badge">Host</span>}
-                  {p.isEliminated && <span className="badge">Out</span>}
-                </div>
+            {sortedPlayers.map((p) => {
+              const order = getDisplayOrder(p);
+              return (
+                <div
+                  key={p.id}
+                  className="flex items-center justify-between gap-2 rounded-xl 
+                             bg-slate-900/80 border border-slate-800/80 
+                             px-3 py-2.5 md:px-4 md:py-3"
+                >
+                  <div className="flex items-center gap-2">
+                    {order != null && (
+                      <span className="badge">#{order}</span>
+                    )}
+                    <span className="text-base md:text-lg font-medium">
+                      {p.name}
+                    </span>
+                    {p.id === my.id && <span className="badge">You</span>}
+                    {p.isHost && <span className="badge">Host</span>}
+                    {p.isEliminated && <span className="badge">Out</span>}
+                  </div>
 
-                <div className="flex items-center gap-2">
-                  {isHost &&
-                    status === 'waiting' &&
-                    p.id !== my.id && (
-                      <button
-                        onClick={() => handleKickFromLobby(p.id)}
-                        disabled={kickFromLobbyLoading === p.id}
-                        className="button-secondary"
-                      >
-                        {kickFromLobbyLoading === p.id ? 'Removing…' : 'Kick'}
-                      </button>
-                    )}
-                  {isHost &&
-                    status !== 'waiting' &&
-                    status !== 'finished' &&
-                    !p.isEliminated && (
-                      <button
-                        onClick={() => handleKickPlayer(p.id)}
-                        disabled={kickLoading === p.id}
-                        className="button-secondary"
-                      >
-                        {kickLoading === p.id ? 'Executing…' : 'Execute'}
-                      </button>
-                    )}
+                  <div className="flex items-center gap-2">
+                    {isHost &&
+                      status === 'waiting' &&
+                      p.id !== my.id && (
+                        <button
+                          onClick={() => handleKickFromLobby(p.id)}
+                          disabled={kickFromLobbyLoading === p.id}
+                          className="button-secondary"
+                        >
+                          {kickFromLobbyLoading === p.id ? 'Removing…' : 'Kick'}
+                        </button>
+                      )}
+                    {isHost &&
+                      status !== 'waiting' &&
+                      status !== 'finished' &&
+                      !p.isEliminated && (
+                        <button
+                          onClick={() => handleKickPlayer(p.id)}
+                          disabled={kickLoading === p.id}
+                          className="button-secondary"
+                        >
+                          {kickLoading === p.id ? 'Executing…' : 'Execute'}
+                        </button>
+                      )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
 
@@ -538,7 +557,7 @@ export default function LobbyClient({
               <span
                 className={`font-semibold text-base sm:text-lg tracking-wide ${roleColorClass}`}
               >
-                {my.role ?? 'Unknown'}
+                {visibleRoleText}
               </span>
             </p>
             <p className="text-sm">
@@ -565,10 +584,9 @@ export default function LobbyClient({
               </button>
               <Link
                 href="/"
-                className="button-secondary inline-flex items-center gap-2"
+                className="button-secondary inline-flex items-center gap-1"
               >
-                <span>Back to Home</span>
-       
+                Back to home <span>🏠</span>
               </Link>
             </div>
           )}
