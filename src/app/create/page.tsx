@@ -1,5 +1,5 @@
 // src/app/create/page.tsx
-import CreateLobbyClient from "../createLobbyClient";
+import CreateLobbyClient from "./createLobbyClient";
 
 type CreatePageProps = {
   searchParams?: { username?: string };
