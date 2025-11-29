@@ -1,6 +1,6 @@
 // src/app/api/mrwhite-guess/route.ts
 import { NextResponse } from 'next/server';
-import { submitMrWhiteGuess } from '@/lib/gameStore';
+import { submitblindGuess } from '@/lib/gameStore';
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({} as any));
@@ -13,7 +13,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const lobby = await submitMrWhiteGuess(lobbyCode, playerId, guess);
+  const lobby = await submitblindGuess(lobbyCode, playerId, guess);
   if (!lobby) {
     return NextResponse.json(
       { error: 'Could not submit Mr White guess' },
