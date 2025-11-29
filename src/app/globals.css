@@ -169,3 +169,103 @@ input {
 ::-webkit-scrollbar-thumb {
   @apply bg-slate-700 rounded-full;
 }
+
+/* -------------------------------------------------
+   DOUBLE BUTTON WITH EYES (NO DIMMING, CURSOR FOLLOW)
+--------------------------------------------------- */
+
+.fun-button-wrapper {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+
+/* top gradient button (real clickable one) */
+.fun-button-top {
+  position: relative;
+  z-index: 3;
+  width: 100%;
+  border-radius: 999px;
+  transform-origin: center center;
+  /* kill extra shadow; depth comes from under button */
+  box-shadow: none !important;
+  transition:
+    transform 220ms cubic-bezier(0.32, 0.07, 0.12, 0.99);
+}
+
+/* bottom black button – solid */
+.fun-button-under {
+  position: absolute;
+  inset: 0;                /* EXACT same size as top button */
+  border-radius: 999px;
+  background: #000000;     /* pure black */
+  box-shadow: 0 18px 35px rgba(0, 0, 0, 0.85);
+  pointer-events: none;    /* clicks go to the real button */
+  z-index: 1;
+}
+
+/* eyes: placed above black pill, below top button */
+.fun-button-eyes {
+  position: absolute;
+  right: 1.3rem;
+  bottom: 0.45rem;
+  display: flex;
+  gap: 0.35rem;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* eye shells */
+.fun-eye {
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 999px;
+  background: #ffffff;   /* pure white */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  opacity: 1 !important;
+  filter: none !important;
+}
+
+.fun-eye-inner {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform-origin: center center;
+  animation: fun-eye-blink 3s infinite;
+}
+
+/* pupil – transform is controlled via inline style from React */
+.fun-eye-pupil {
+  width: 0.34rem;
+  height: 0.34rem;
+  border-radius: 999px;
+  background: #000000;   /* pure black */
+  /* IMPORTANT: no transform here, it's set from React inline style */
+  transition: transform 260ms cubic-bezier(0.33, 1, 0.68, 1);
+  opacity: 1 !important;
+  filter: none !important;
+}
+
+
+/* hover: only the TOP button moves; under + eyes stay put */
+.fun-button-wrapper:hover .fun-button-top {
+  transform: translate(-4px, -10px) rotate(-7deg);
+  box-shadow: none !important;
+}
+
+/* blink every ~3s */
+@keyframes fun-eye-blink {
+  0%,
+  90%,
+  100% {
+    transform: scaleY(1);
+  }
+  93% {
+    transform: scaleY(0.1);
+  }
+}

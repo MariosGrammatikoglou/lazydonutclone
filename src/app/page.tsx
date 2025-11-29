@@ -1,7 +1,81 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import type { CSSProperties, MouseEvent } from 'react';
+
+type FunButtonProps = {
+  label: string;
+  onClick: () => void;
+};
+
+function FunButton({ label, onClick }: FunButtonProps) {
+  const [pupilOffset, setPupilOffset] = useState({ x: 0, y: 0 });
+  const [hovered, setHovered] = useState(false);
+
+  // Random eye movement while hovered
+useEffect(() => {
+  if (!hovered) {
+    setPupilOffset({ x: 0, y: 0 });
+    return;
+  }
+
+  const id = setInterval(() => {
+    const max = 3; // smaller movement, more subtle
+    const x = (Math.random() * 2 - 1) * max;
+    const y = (Math.random() * 2 - 1) * max;
+    setPupilOffset({ x, y });
+  }, 650); // slower: ~0.65s per move
+
+  return () => clearInterval(id);
+}, [hovered]);
+
+
+  const pupilStyle: CSSProperties = {
+    transform: `translate(${pupilOffset.x}px, ${pupilOffset.y}px)`,
+  };
+
+  function handleMouseEnter(_e: MouseEvent<HTMLDivElement>) {
+    setHovered(true);
+  }
+
+  function handleMouseLeave(_e: MouseEvent<HTMLDivElement>) {
+    setHovered(false);
+  }
+
+  return (
+    <div
+      className="fun-button-wrapper mt-4"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
+      {/* bottom black button */}
+      <div className="fun-button-under" aria-hidden="true" />
+
+      {/* eyes layer */}
+      <div className="fun-button-eyes" aria-hidden="true">
+        <span className="fun-eye">
+          <span className="fun-eye-inner">
+            <span className="fun-eye-pupil" style={pupilStyle} />
+          </span>
+        </span>
+        <span className="fun-eye">
+          <span className="fun-eye-inner">
+            <span className="fun-eye-pupil" style={pupilStyle} />
+          </span>
+        </span>
+      </div>
+
+      {/* real clickable button on top */}
+      <button
+        onClick={onClick}
+        className="button-primary fun-button-top"
+      >
+        {label}
+      </button>
+    </div>
+  );
+}
 
 export default function HomePage() {
   const router = useRouter();
@@ -37,7 +111,8 @@ export default function HomePage() {
               </span>
             </h1>
             <p className="text-sm text-slate-400">
-                Want your friend group to fall apart? Let the drama begin           </p>
+              Want your friend group to fall apart? Let the drama begin
+            </p>
           </div>
           <span className="badge mt-2 sm:mt-0">
             <span className="w-2 h-2 rounded-full bg-emerald-400 mr-1" />
@@ -59,28 +134,25 @@ export default function HomePage() {
         </section>
 
         <section className="mt-3 grid gap-3 sm:grid-cols-2">
+          {/* CREATE CARD */}
           <div className="rounded-xl bg-slate-900/70 border border-slate-800/80 p-4 flex flex-col gap-2">
             <h3>Create lobby</h3>
             <p className="text-xs text-slate-400">
               You&apos;ll be the host. Set roles and share the lobby code with
               your friends.
             </p>
-            <button onClick={goCreate} className="button-primary mt-1">
-              Create lobby
-            </button>
+
+            <FunButton label="Create lobby" onClick={goCreate} />
           </div>
 
+          {/* JOIN CARD */}
           <div className="rounded-xl bg-slate-900/70 border border-slate-800/80 p-4 flex flex-col gap-2">
             <h3>Join lobby</h3>
             <p className="text-xs text-slate-400">
               Got a code from a friend? Join their lobby and start bluffing.
             </p>
-            <button
-              onClick={goJoin}
-              className="button-primary mt-1"
-            >
-              Join with code
-            </button>
+
+            <FunButton label="Join with code" onClick={goJoin} />
           </div>
         </section>
 
