@@ -107,7 +107,7 @@ export default function HomePage() {
           <div>
             <h1>
               <span className="text-gradient-brand">
-                LazyDonut Undercover
+                LazyDonut SpyRoom
               </span>
             </h1>
             <p className="text-sm text-slate-400">

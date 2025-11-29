@@ -2,20 +2,20 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'LazyDonut Undercover',
-  description: 'Undercover online by LazyDonut.',
-  metadataBase: new URL('https://lazydonutundercover.vercel.app/'), 
+  title: 'LazyDonut Clone',
+  description: 'Clone online by LazyDonut.',
+  metadataBase: new URL('https://lazydonutspyroom.vercel.app/'), 
   openGraph: {
-    title: 'LazyDonut Undercover',
-    description: 'Undercover online by LazyDonut.',
-    url: 'https://lazydonutundercover.vercel.app/',
-    siteName: 'LazyDonut Undercover',
+    title: 'LazyDonut Clone',
+    description: 'SpyRoom online by Clone.',
+    url: 'https://lazydonutclone.vercel.app/',
+    siteName: 'LazyDonut Clone',
     images: [
       {
         url: '/mymetaimage.png', 
         width: 1200,
         height: 630,
-        alt: 'LazyDonut Undercover',
+        alt: 'LazyDonut Clone',
       },
     ],
     type: 'website',
