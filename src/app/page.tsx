@@ -160,7 +160,7 @@ export default function HomePage() {
         </section>
 
         {/* New footer with How to Play button */}
-        <footer className="mt-2 text-slate-500 flex flex-wrap gap-2 justify-between">
+        <footer className="mt-2 pr-2 text-slate-500 flex flex-wrap gap-2 justify-between">
           <button
             className="ml-auto cursor-pointer text-sm text-indigo-500 hover:text-indigo-400"
             onClick={openModal}
