@@ -134,7 +134,7 @@ export default function HomePage() {
               setUsername(e.target.value);
               if (error) setError(null);
             }}
-            placeholder="e.g. Terlegkas"
+            placeholder="e.g. Pepegkas"
           />
           {error && <div className="error">{error}</div>}
         </section>
