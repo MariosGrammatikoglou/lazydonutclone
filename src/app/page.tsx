@@ -12,6 +12,7 @@ type FunButtonProps = {
 function FunButton({ label, onClick }: FunButtonProps) {
   const [pupilOffset, setPupilOffset] = useState({ x: 0, y: 0 });
   const [hovered, setHovered] = useState(false);
+  const [showJumpscare, setShowJumpscare] = useState(false); // For showing the jumpscare
 
   // Random eye movement while hovered
   useEffect(() => {
@@ -28,6 +29,31 @@ function FunButton({ label, onClick }: FunButtonProps) {
     }, 650); // slower: ~0.65s per move
 
     return () => clearInterval(id);
+  }, [hovered]);
+
+  // Timer to trigger the jumpscare after 5 seconds of hovering
+  useEffect(() => {
+    let timer: NodeJS.Timeout | undefined;  // Initialize timer safely
+
+    if (hovered) {
+      // Set a timer when hover starts
+      timer = setTimeout(() => {
+        setShowJumpscare(true); // Show jumpscare after 5 seconds
+      }, 5000); // 5 seconds
+    } else {
+      // Reset jumpscare when hovering stops
+      setShowJumpscare(false);
+      if (timer) {
+        clearTimeout(timer);  // Clear the timer if it exists
+      }
+    }
+
+    // Cleanup the timer when effect is cleaned up or dependencies change
+    return () => {
+      if (timer) {
+        clearTimeout(timer);
+      }
+    };
   }, [hovered]);
 
   const pupilStyle: CSSProperties = {
@@ -51,27 +77,42 @@ function FunButton({ label, onClick }: FunButtonProps) {
       {/* bottom black button */}
       <div className="fun-button-under" aria-hidden="true" />
 
-      {/* eyes layer */}
-      <div className="fun-button-eyes" aria-hidden="true">
-        <span className="fun-eye">
-          <span className="fun-eye-inner">
-            <span className="fun-eye-pupil" style={pupilStyle} />
+      {/* eyes layer (will show only after 5 seconds of hover) */}
+      {!showJumpscare && (
+        <div className="fun-button-eyes" aria-hidden="true">
+          <span className="fun-eye">
+            <span className="fun-eye-inner">
+              <span className="fun-eye-pupil" style={pupilStyle} />
+            </span>
           </span>
-        </span>
-        <span className="fun-eye">
-          <span className="fun-eye-inner">
-            <span className="fun-eye-pupil" style={pupilStyle} />
+          <span className="fun-eye">
+            <span className="fun-eye-inner">
+              <span className="fun-eye-pupil" style={pupilStyle} />
+            </span>
           </span>
-        </span>
-      </div>
+        </div>
+      )}
 
       {/* real clickable button on top */}
-      <button
-        onClick={onClick}
-        className="button-primary fun-button-top"
-      >
+      <button onClick={onClick} className="button-primary fun-button-top">
         {label}
       </button>
+
+      {/* Pop-up jumpscare after 5 seconds */}
+      {showJumpscare && (
+        <div className="fun-button-eyes jumpscare" aria-hidden="true">
+          <span className="fun-eye jumpscare-eye">
+            <span className="fun-eye-inner">
+              <span className="fun-eye-pupil jumpscare-pupil" style={pupilStyle} />
+            </span>
+          </span>
+          <span className="fun-eye jumpscare-eye">
+            <span className="fun-eye-inner">
+              <span className="fun-eye-pupil jumpscare-pupil" style={pupilStyle} />
+            </span>
+          </span>
+        </div>
+      )}
     </div>
   );
 }
@@ -140,9 +181,9 @@ export default function HomePage() {
         </section>
 
         <section className="mt-3 grid gap-3 sm:grid-cols-2">
-          <div className="rounded-xl bg-slate-900/70 border border-slate-800/80 p-4 flex flex-col gap-2">
+          <div className="rounded-xl bg-slate-900/70 border border-slate-800/80 p-4 pb-6 flex flex-col gap-2">
             <h3>Create lobby</h3>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-400 pb-2">
               You&apos;ll be the host. Set roles and share the lobby code with your friends.
             </p>
 
@@ -151,7 +192,7 @@ export default function HomePage() {
 
           <div className="rounded-xl bg-slate-900/70 border border-slate-800/80 p-4 flex flex-col gap-2">
             <h3>Join lobby</h3>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-400 pb-2">
               Got a code from a friend? Join their lobby and start bluffing.
             </p>
 
@@ -174,8 +215,8 @@ export default function HomePage() {
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
           <div className="bg-slate-900 p-6 rounded-lg shadow-lg text-white w-140">
-             <h3 className="text-lg font-semibold">Game Roles</h3>
-             <p className="mt-3 text-sm text-slate-400">
+            <h3 className="text-lg font-semibold">Game Roles</h3>
+            <p className="mt-3 text-sm text-slate-400">
               <ul className="mt-2">
                 <li>Each round, players will take random turns explaining their word to the group.</li>
                 <li>Legits must explain their word clearly to help the group identify the Clones.</li>
@@ -186,15 +227,25 @@ export default function HomePage() {
                 <li>Legits win if all Clones are executed. Clones win if they avoid detection until the end of the game and they are the only alive.</li>
               </ul>
             </p>
-             <h3 className="text-lg font-semibold mt-2">How Roles Works</h3>
-             <p className="mt-3 text-sm text-slate-400">
+            <h3 className="text-lg font-semibold mt-2">How Roles Works</h3>
+            <p className="mt-3 text-sm text-slate-400">
               <ul className="mt-2">
-                <li><strong>Legits:</strong> Their goal is to identify the Clones and Blinds and execute them.</li>
-                <li><strong>Clones:</strong> Their goal is to understand that they have not the correct word. They can assume that when each player explains their word. If a lot of players explain something that is not 100% at their word they can assume if their word is legit or the similar one. The Clones must avoid execution by the Legits.</li>
-                <li><strong>Blinds:</strong> These players do not know any of the words and must rely on others to make accusations. When they get executed they get a try to guess the word. If they do they win.</li>
+                <li>
+                  <strong>Legits:</strong> Their goal is to identify the Clones and Blinds and execute them.
+                </li>
+                <li>
+                  <strong>Clones:</strong> Their goal is to understand that they have not the correct word. They
+                  can assume that when each player explains their word. If a lot of players explain something that
+                  is not 100% at their word they can assume if their word is legit or the similar one. The Clones must
+                  avoid execution by the Legits.
+                </li>
+                <li>
+                  <strong>Blinds:</strong> These players do not know any of the words and must rely on others to make
+                  accusations. When they get executed they get a try to guess the word. If they do they win.
+                </li>
               </ul>
             </p>
-           
+
             <div className="mt-4 flex justify-end gap-2">
               <button className="button-secondary" onClick={closeModal}>
                 Close

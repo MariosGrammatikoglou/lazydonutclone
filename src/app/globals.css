@@ -186,12 +186,17 @@ input {
   z-index: 3;
   width: 100%;
   border-radius: 999px;
-  transform-origin: center center;
-  /* kill extra shadow; depth comes from under button */
+  transform-origin: left center; /* Keep the left side fixed as the pivot */
   box-shadow: none !important;
-  transition:
-    transform 220ms cubic-bezier(0.32, 0.07, 0.12, 0.99);
+  transition: transform 220ms cubic-bezier(0.32, 0.07, 0.12, 0.99);
 }
+
+/* hover: only the RIGHT side rotates; left side stays fixed */
+.fun-button-wrapper:hover .fun-button-top {
+  transform: rotate(-7deg); /* Apply rotation only to the right side */
+  box-shadow: none !important;
+}
+
 
 /* bottom black button – solid */
 .fun-button-under {
@@ -252,11 +257,7 @@ input {
 }
 
 
-/* hover: only the TOP button moves; under + eyes stay put */s
-.fun-button-wrapper:hover .fun-button-top {
-  transform: translate(-4px, -10px) rotate(-7deg);
-  box-shadow: none !important;
-}
+
 
 /* blink every ~3s */
 @keyframes fun-eye-blink {
@@ -267,5 +268,48 @@ input {
   }
   93% {
     transform: scaleY(0.1);
+  }
+}
+
+/* Fun button eyes - Jump Scare */
+.fun-button-eyes.jumpscare {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.9); /* Darker background for a more intense jumpscare */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  animation: eye-jumpscare 1s ease-in-out;
+}
+
+/* Increase size of eyes a bit more */
+.fun-eye.jumpscare-eye {
+  width: 9rem;  /* Larger eye size */
+  height: 9rem;
+  margin-right: 2.5rem; /* Reduce gap between eyes */
+}
+
+/* Larger pupils in jumpscare */
+.fun-eye-pupil.jumpscare-pupil {
+  width: 3.5rem;  /* Larger pupil size */
+  height: 3.5rem;
+}
+
+/* Animation for jumpscare */
+@keyframes eye-jumpscare {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(2);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
   }
 }
