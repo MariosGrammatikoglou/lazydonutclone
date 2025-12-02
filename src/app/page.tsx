@@ -219,28 +219,28 @@ export default function HomePage() {
             <p className="mt-3 text-sm text-slate-400">
               <ul className="mt-2">
                 <li>Each round, players will take random turns explaining their word to the group.</li>
-                <li>Legits must explain their word clearly to help the group identify the Clones.</li>
-                <li>Clones must try to explain their word similarly to the Legits without being caught.</li>
-                <li>Blinds will try to make sense of the explanation, but they do not know the actual word.</li>
-                <li>At the end of each round, players vote to execute someone they believe is a Clone. If the vote is successful, the Clone is out.</li>
-                <li>If blind is executed he gets a try to guess the word to win.</li>
-                <li>Legits win if all Clones are executed. Clones win if they avoid detection until the end of the game and they are the only alive.</li>
+                <li>Civilians must explain their word clearly to help the group identify the Undercover.</li>
+                <li>Undercover must try to explain their word similarly to the Legits without being caught.</li>
+                <li>MrWhites will try to make sense of the explanation, but they do not know the actual word.</li>
+                <li>At the end of each round, players vote to execute someone they believe is a Undercover. If the vote is successful, the Undercover is out.</li>
+                <li>If mr white is executed he gets a try to guess the word to win.</li>
+                <li>Legits win if all Undercovers are executed. Undercovers win if they avoid detection until the end of the game and they are the only alive.</li>
               </ul>
             </p>
             <h3 className="text-lg font-semibold mt-2">How Roles Works</h3>
             <p className="mt-3 text-sm text-slate-400">
               <ul className="mt-2">
                 <li>
-                  <strong>Legits:</strong> Their goal is to identify the Clones and Blinds and execute them.
+                  <strong>Legits:</strong> Their goal is to identify the Undercovers and Mr Whites and execute them.
                 </li>
                 <li>
-                  <strong>Clones:</strong> Their goal is to understand that they have not the correct word. They
+                  <strong>Undercovers:</strong> Their goal is to understand that they have not the correct word. They
                   can assume that when each player explains their word. If a lot of players explain something that
-                  is not 100% at their word they can assume if their word is legit or the similar one. The Clones must
+                  is not 100% at their word they can assume if their word is legit or the similar one. The Undercovers must
                   avoid execution by the Legits.
                 </li>
                 <li>
-                  <strong>Blinds:</strong> These players do not know any of the words and must rely on others to make
+                  <strong>Mr Whites:</strong> These players do not know any of the words and must rely on others to make
                   accusations. When they get executed they get a try to guess the word. If they do they win.
                 </li>
               </ul>
