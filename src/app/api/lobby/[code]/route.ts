@@ -28,6 +28,7 @@ export async function GET(
     isEliminated: p.isEliminated,
     order: p.talkOrder ?? null, 
   })),
+   votes: lobby.votes ?? {},
 });
 
 }

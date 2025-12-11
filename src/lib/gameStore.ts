@@ -36,7 +36,11 @@ export type Lobby = {
   winner: Winner;
   pendingBlindId?: string | null;
   usedWordIndices: number[];
+  // voting during a round: voterId -> targetPlayerId
+  votes?: Record<string, string>;
 };
+
+
 
 const LOBBY_TABLE = 'lobbies';
 
@@ -312,10 +316,58 @@ function checkWinCondition(lobby: Lobby): Lobby {
 
 // ---------- exported functions used by API routes ----------
 
+export async function removePlayerFromLobby(
+  code: string,
+  playerId: string
+): Promise<Lobby | null> {
+  const lobby = await loadLobby(code);
+  if (!lobby) return null;
+
+  const before = lobby.players.length;
+  lobby.players = lobby.players.filter((p) => p.id !== playerId);
+
+  if (lobby.players.length === before) {
+    // player was not in this lobby
+    return lobby;
+  }
+
+  console.log(
+    '[LOBBY] Player left / removed from lobby',
+    lobby.code,
+    'player=',
+    playerId
+  );
+
+  if (lobby.players.length === 0) {
+    // Lobby is now empty → reset it to a clean waiting state
+    lobby.status = 'waiting';
+    lobby.winner = null;
+    lobby.pendingBlindId = null;
+    lobby.legitWord = undefined;
+    lobby.cloneWord = undefined;
+    console.log(
+      '[LOBBY] Lobby empty after player leave, reset to waiting',
+      lobby.code
+    );
+  } else if (lobby.status === 'started' || lobby.status === 'blind_guess') {
+    // Game was running and someone left:
+    recomputeTalkOrder(lobby);
+    applyAutoWin(lobby);
+  }
+
+  await saveLobby(lobby);
+  return lobby;
+}
+
+
+
+
 export async function getLobby(code: string): Promise<Lobby | null> {
   if (!code) return null;
   return loadLobby(code);
 }
+
+
 
 export async function createLobby(
   hostName: string,
@@ -342,7 +394,9 @@ export async function createLobby(
     winner: null,
     pendingBlindId: null,
     usedWordIndices: [],
+    votes: {},
   };
+
 
   await saveLobby(lobby);
 
@@ -404,15 +458,21 @@ export async function startGame(code: string): Promise<Lobby | null> {
 
   const chosenIndex =
     availableIndices[Math.floor(Math.random() * availableIndices.length)];
-  const pair = WORD_PAIRS[chosenIndex];
+  const basePair = WORD_PAIRS[chosenIndex];
+
+  // 👇 NEW: randomly decide which word is legit and which is clone
+  const flip = Math.random() < 0.5;
+  const legitWord = flip ? basePair.clone : basePair.legit;
+  const cloneWord = flip ? basePair.legit : basePair.clone;
 
   console.log(
     '[GAME] Starting new round in lobby',
     code,
     'chosenIndex=',
     chosenIndex,
-    'pair=',
-    pair,
+    'basePair=',
+    basePair,
+    'assigned={ legit:', legitWord, ', clone:', cloneWord, '}',
     'previous usedWordIndices=',
     lobby.usedWordIndices
   );
@@ -434,8 +494,8 @@ export async function startGame(code: string): Promise<Lobby | null> {
   lobby.players = lobby.players.map((p, idx) => {
     const role = roles[idx];
     let word: string | null = null;
-    if (role === 'legit') word = pair.legit;
-    if (role === 'clone') word = pair.clone;
+    if (role === 'legit') word = legitWord;
+    if (role === 'clone') word = cloneWord;
     if (role === 'blind') word = null;
 
     return {
@@ -447,10 +507,11 @@ export async function startGame(code: string): Promise<Lobby | null> {
   });
 
   lobby.status = 'started';
-  lobby.legitWord = pair.legit;
-  lobby.cloneWord = pair.clone;
+  lobby.legitWord = legitWord;
+  lobby.cloneWord = cloneWord;
   lobby.winner = null;
   lobby.pendingBlindId = null;
+  lobby.votes = {};
 
   // Random speaking order for this game
   const shuffled = [...lobby.players];
@@ -465,6 +526,7 @@ export async function startGame(code: string): Promise<Lobby | null> {
   await saveLobby(lobby);
   return lobby;
 }
+
 
 // This is used by /api/kick-player (Execute in-game)
 export async function eliminatePlayer(
@@ -505,6 +567,10 @@ export async function eliminatePlayer(
     applyAutoWin(lobby);
   }
 
+    // After an execution, clear all visible votes
+  lobby.votes = {};
+
+
   await saveLobby(lobby);
   return { lobby, blindNeedsGuess };
 }
@@ -524,6 +590,11 @@ export async function kickFromLobby(
 
   const before = lobby.players.length;
   lobby.players = lobby.players.filter((p) => p.id !== targetPlayerId);
+
+  if (lobby.votes) {
+    delete lobby.votes[targetPlayerId];
+  }
+
 
   if (lobby.players.length === before) {
     return null; // nothing removed
@@ -604,6 +675,8 @@ export async function resetLobby(
   lobby.pendingBlindId = null;
   lobby.legitWord = undefined;
   lobby.cloneWord = undefined;
+  lobby.votes = {};
+
 
   // Keep usedWordIndices so this lobby never repeats word pairs
   // Keep all players, just clear their game state
@@ -668,4 +741,39 @@ export async function getPlayerState(
   await saveLobby(lobby);
 
   return { lobby, player };
+}
+
+export async function addVote(
+  code: string,
+  voterId: string,
+  targetPlayerId: string
+): Promise<Lobby | null> {
+  const lobby = await loadLobby(code);
+  if (!lobby) return null;
+
+  // Only allow votes during an active game
+  if (lobby.status !== 'started' && lobby.status !== 'blind_guess') {
+    return lobby;
+  }
+
+  // Voter must exist and be alive
+  const voter = lobby.players.find(
+    (p) => p.id === voterId && !p.isEliminated
+  );
+  if (!voter) return lobby;
+
+  // Target must exist and be alive
+  const target = lobby.players.find(
+    (p) => p.id === targetPlayerId && !p.isEliminated
+  );
+  if (!target) return lobby;
+
+  if (!lobby.votes) lobby.votes = {};
+
+  // Move / set this voter's vote to the new target.
+  // This automatically "removes" their vote from any previous target.
+  lobby.votes[voterId] = targetPlayerId;
+
+  await saveLobby(lobby);
+  return lobby;
 }

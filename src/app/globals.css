@@ -313,3 +313,81 @@ input {
     transform: scale(1);
   }
 }
+/* -------------------------------------------------
+   DANGER BUTTONS - LAVA TO ORANGE FLAME
+   (Vote / Execute / Kick)
+--------------------------------------------------- */
+
+.vote-button,
+.execute-button,
+.kick-button {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate; /* keep lava inside the pill */
+}
+
+/* Lava / flame layer inside the button */
+.vote-button::before,
+.execute-button::before,
+.kick-button::before {
+  content: '';
+  position: absolute;
+  inset: -20%; /* bleed a bit outside to avoid hard edges */
+  background: radial-gradient(circle at 0% 50%, #7f1d1d 0%, transparent 55%),
+    radial-gradient(circle at 30% 10%, #b91c1c 0%, transparent 60%),
+    radial-gradient(circle at 60% 90%, #f97316 0%, transparent 55%),
+    radial-gradient(circle at 100% 40%, #facc15 0%, transparent 60%);
+  background-size: 220% 220%;
+  background-position: 0% 50%;
+  opacity: 0; /* hidden until hover */
+  mix-blend-mode: screen;
+  pointer-events: none;
+  transition: opacity 220ms ease-out;
+  z-index: -1;
+}
+
+/* Hover: wake up the lava, but keep button still */
+.vote-button:hover:not(:disabled),
+.execute-button:hover:not(:disabled),
+.kick-button:hover:not(:disabled) {
+  border-color: #f97316;
+  box-shadow:
+    0 0 0 1px rgba(15, 23, 42, 0.9),
+    0 0 24px rgba(248, 113, 113, 0.45);
+  color: #fee2e2;
+}
+
+.vote-button:hover:not(:disabled)::before,
+.execute-button:hover:not(:disabled)::before,
+.kick-button:hover:not(:disabled)::before {
+  opacity: 1;
+  animation: vote-lava-loop 6s linear infinite alternate;
+}
+
+/* Click: slight darken, still no movement */
+.vote-button:active:not(:disabled),
+.execute-button:active:not(:disabled),
+.kick-button:active:not(:disabled) {
+  filter: brightness(0.9);
+}
+
+/* Disabled: no lava, no glow */
+.vote-button:disabled::before,
+.execute-button:disabled::before,
+.kick-button:disabled::before {
+  opacity: 0;
+  animation: none;
+}
+
+/* Smooth red -> orange -> red loop */
+@keyframes vote-lava-loop {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 60%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}

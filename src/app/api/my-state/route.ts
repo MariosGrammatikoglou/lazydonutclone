@@ -2,39 +2,37 @@ import { NextResponse } from 'next/server';
 import { getPlayerState } from '@/lib/gameStore';
 
 export async function POST(req: Request) {
-  const body = await req.json().catch(() => ({} as any));
-  const { lobbyCode, playerId } = body ?? {};
+  const body = await req.json().catch(() => null);
 
-  // If missing data, just return a neutral state
+  if (!body) {
+    return NextResponse.json(
+      { error: 'Invalid JSON body' },
+      { status: 400 }
+    );
+  }
+
+  const { lobbyCode, playerId } = body as {
+    lobbyCode?: string;
+    playerId?: string;
+  };
+
   if (!lobbyCode || !playerId) {
-    return NextResponse.json({
-      lobbyStatus: 'waiting',
-      winner: null,
-      player: {
-        id: playerId ?? '',
-        name: '',
-        role: undefined,
-        word: null,
-        isHost: false,
-        isEliminated: false,
-      },
-    });
+    return NextResponse.json(
+      { error: 'lobbyCode and playerId are required' },
+      { status: 400 }
+    );
   }
 
   const result = await getPlayerState(lobbyCode, playerId);
+
   if (!result) {
-    return NextResponse.json({
-      lobbyStatus: 'waiting',
-      winner: null,
-      player: {
-        id: playerId,
-        name: '',
-        role: undefined,
-        word: null,
-        isHost: false,
-        isEliminated: true,
+    return NextResponse.json(
+      {
+        error: 'Player not found in lobby',
+        code: 'PLAYER_NOT_IN_LOBBY',
       },
-    });
+      { status: 404 }
+    );
   }
 
   const { lobby, player } = result;
@@ -42,6 +40,7 @@ export async function POST(req: Request) {
   return NextResponse.json({
     lobbyStatus: lobby.status,
     winner: lobby.winner,
+    hostSecret: lobby.hostSecret, // 👈 always include
     player: {
       id: player.id,
       name: player.name,

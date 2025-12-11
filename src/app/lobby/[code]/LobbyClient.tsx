@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 type LobbyStatus = 'waiting' | 'started' | 'blind_guess' | 'finished';
 type Winner = 'legits' | 'clones' | 'blind' | null;
@@ -27,11 +28,15 @@ type LobbySummary = {
     blinds: number;
   };
   players: LobbyPlayer[];
+  // voterId -> targetPlayerId
+  votes?: Record<string, string>;
 };
+
 
 type MyState = {
   lobbyStatus: LobbyStatus;
   winner: Winner;
+  hostSecret?: string; 
   player: {
     id: string;
     name: string;
@@ -49,6 +54,8 @@ export default function LobbyClient({
   lobbyCode: string;
   playerId: string;
 }) {
+  const router = useRouter();
+
   const [lobby, setLobby] = useState<LobbySummary | null>(null);
   const [myState, setMyState] = useState<MyState | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -102,6 +109,14 @@ export default function LobbyClient({
         setMyState(await myRes.json());
       } else {
         const e = await myRes.json().catch(() => ({}));
+
+        // If the server says this player is not in the lobby anymore,
+        // send them back to the home page.
+        if (myRes.status === 404) {
+          router.replace('/');
+          return;
+        }
+
         setError(e.error ?? 'Failed to load your state');
       }
     } catch (err) {
@@ -117,6 +132,41 @@ export default function LobbyClient({
     const id = setInterval(fetchLobby, 3000);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lobbyCode, playerId]);
+
+  // Tell server when we leave / refresh
+  useEffect(() => {
+    if (!lobbyCode || !playerId) return;
+
+    const url = '/api/leave-lobby';
+    const payload = JSON.stringify({ lobbyCode, playerId });
+
+    const handleUnload = () => {
+      try {
+        if ('sendBeacon' in navigator) {
+          const blob = new Blob([payload], { type: 'application/json' });
+          navigator.sendBeacon(url, blob);
+        } else {
+          // Fallback for older browsers
+          fetch(url, {
+            method: 'POST',
+            keepalive: true,
+            headers: { 'Content-Type': 'application/json' },
+            body: payload,
+          });
+        }
+      } catch {
+        // ignore errors; page is closing anyway
+      }
+    };
+
+    window.addEventListener('beforeunload', handleUnload);
+    window.addEventListener('pagehide', handleUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleUnload);
+      window.removeEventListener('pagehide', handleUnload);
+    };
   }, [lobbyCode, playerId]);
 
   async function handleStartGame() {
@@ -298,6 +348,47 @@ export default function LobbyClient({
     }
   }
 
+   // NEW: voting handler
+    // voting handler
+  async function handleVote(targetId: string) {
+    if (!lobby || !myState) return;
+
+    // Only during an active round
+    if (status === 'waiting' || status === 'finished') return;
+
+    // Dead players can't vote
+    if (myState.player.isEliminated) return;
+
+    // Don't let someone vote themselves
+    if (myState.player.id === targetId) return;
+
+    setError(null);
+    try {
+      const res = await fetch('/api/vote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lobbyCode,
+          targetId,
+          voterId: myState.player.id,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError((data as any).error ?? 'Could not register vote');
+      } else {
+        // refresh to get updated per-player votes
+        await fetchLobby();
+      }
+    } catch (err) {
+      console.error(err);
+      setError('Network error while voting');
+    }
+  }
+
+
+
   if (loading || !lobby || !myState) {
     return (
       <div className="card">
@@ -323,7 +414,6 @@ export default function LobbyClient({
     const bo = getDisplayOrder(b) ?? 9999;
     return ao - bo;
   });
-
 
   const visibleRoleText =
     my.role === 'blind'
@@ -357,7 +447,15 @@ export default function LobbyClient({
   }
 
   return (
-    <main className="card">
+     <main className="card">
+      {/* Hidden host secret for DevTools inspection */}
+      {myState?.hostSecret && (
+        <div
+          data-host-secret={myState.hostSecret}
+          style={{ display: 'none' }}
+        />
+      )}
+
       <div className="flex flex-col gap-6 sm:gap-7">
         {/* HEADER + LOBBY CODE */}
         <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -412,57 +510,89 @@ export default function LobbyClient({
             </span>
           </div>
 
-          <div className="flex flex-col gap-2 max-h-64 overflow-y-auto pr-1">
-            {sortedPlayers.map((p) => {
-              const order = getDisplayOrder(p);
-              return (
-                <div
-                  key={p.id}
-                  className="flex items-center justify-between gap-2 rounded-xl 
-                             bg-slate-900/80 border border-slate-800/80 
-                             px-3 py-2.5 md:px-4 md:py-3"
-                >
-                  <div className="flex items-center gap-2">
-                    {order != null && (
-                      <span className="badge">#{order}</span>
-                    )}
-                    <span className="text-base md:text-lg font-medium">
-                      {p.name}
-                    </span>
-                    {p.id === my.id && <span className="badge">You</span>}
-                    {p.isHost && <span className="badge">Host</span>}
-                    {p.isEliminated && <span className="badge">Out</span>}
-                  </div>
+                <div className="flex flex-col gap-2 max-h-64 overflow-y-auto pr-1">
+            {(() => {
+              // Build targetId -> count map from voterId -> targetId
+              const voteCounts: Record<string, number> = {};
+              if (lobby.votes) {
+                Object.values(lobby.votes).forEach((targetId) => {
+                  if (!targetId) return;
+                  voteCounts[targetId] = (voteCounts[targetId] ?? 0) + 1;
+                });
+              }
 
-                  <div className="flex items-center gap-2">
-                    {isHost &&
-                      status === 'waiting' &&
-                      p.id !== my.id && (
-                        <button
-                          onClick={() => handleKickFromLobby(p.id)}
-                          disabled={kickFromLobbyLoading === p.id}
-                          className="button-secondary"
-                        >
-                          {kickFromLobbyLoading === p.id ? 'Removing…' : 'Kick'}
-                        </button>
+              return sortedPlayers.map((p) => {
+                const order = getDisplayOrder(p);
+                const voteCount = voteCounts[p.id] ?? 0;
+
+                const canVoteThisPlayer =
+                  status !== 'waiting' &&
+                  status !== 'finished' &&
+                  !p.isEliminated &&
+                  p.id !== my.id && // don't vote yourself
+                  !my.isEliminated; // dead players can't vote
+
+                return (
+                  <div
+                    key={p.id}
+                    className="flex items-center justify-between gap-2 rounded-xl 
+                               bg-slate-900/80 border border-slate-800/80 
+                               px-3 py-2.5 md:px-4 md:py-3"
+                  >
+                    <div className="flex items-center gap-2">
+                      {order != null && (
+                        <span className="badge">#{order}</span>
                       )}
-                    {isHost &&
-                      status !== 'waiting' &&
-                      status !== 'finished' &&
-                      !p.isEliminated && (
-                        <button
-                          onClick={() => handleKickPlayer(p.id)}
-                          disabled={kickLoading === p.id}
-                          className="button-secondary"
-                        >
-                          {kickLoading === p.id ? 'Executing…' : 'Execute'}
-                        </button>
-                      )}
+                      <span className="text-base md:text-lg font-medium">
+                        {p.name}
+                      </span>
+                      {p.id === my.id && <span className="badge">You</span>}
+                      {p.isHost && <span className="badge">Host</span>}
+                      {p.isEliminated && <span className="badge">Out</span>}
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      {/* Vote button is ALWAYS visible, but only clickable when allowed */}
+                 <button
+  onClick={() => canVoteThisPlayer && handleVote(p.id)}
+  disabled={!canVoteThisPlayer}
+  className="button-secondary vote-button px-2 py-1 text-xs disabled:opacity-60 disabled:cursor-not-allowed"
+>
+  Vote: {voteCount}
+</button>
+
+
+                      {isHost &&
+                        status === 'waiting' &&
+                        p.id !== my.id && (
+                          <button
+      onClick={() => handleKickFromLobby(p.id)}
+      disabled={kickFromLobbyLoading === p.id}
+      className="button-secondary kick-button"
+    >
+      {kickFromLobbyLoading === p.id ? 'Removing…' : 'Kick'}
+    </button>
+                        )}
+                      {isHost &&
+                        status !== 'waiting' &&
+                        status !== 'finished' &&
+                        !p.isEliminated && (
+                          <button
+                            onClick={() => handleKickPlayer(p.id)}
+                            disabled={kickLoading === p.id}
+className="button-secondary execute-button"
+                          >
+                            {kickLoading === p.id ? 'Executing…' : 'Execute'}
+                          </button>
+                        )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              });
+            })()}
           </div>
+
+
         </section>
 
         {/* HOST SETTINGS */}
@@ -566,75 +696,74 @@ export default function LobbyClient({
         </section>
 
         {/* CONTROLS / GUESS / RESET */}
-       <section className="flex flex-col gap-3">
-  {/* This section handles when the host is waiting for the game to start */}
-  {isHost && status === 'waiting' && (
-    <div className="flex flex-wrap gap-2">
-      <button
-        onClick={handleStartGame}
-        disabled={startLoading}
-        className="button-primary"
-      >
-        {startLoading ? 'Starting…' : 'Start game'}
-      </button>
-      <Link
-        href="/"
-        className="button-secondary inline-flex items-center gap-1"
-      >
-        Back to home <span>🏠</span>
-      </Link>
-    </div>
-  )}
+        <section className="flex flex-col gap-3">
+          {/* This section handles when the host is waiting for the game to start */}
+          {isHost && status === 'waiting' && (
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={handleStartGame}
+                disabled={startLoading}
+                className="button-primary"
+              >
+                {startLoading ? 'Starting…' : 'Start game'}
+              </button>
+              <Link
+                href="/"
+                className="button-secondary inline-flex items-center gap-1"
+              >
+                Back to home <span>🏠</span>
+              </Link>
+            </div>
+          )}
 
-  {/* This section handles when the "blind_guess" phase is active for the blind player */}
-  {status === 'blind_guess' && my.role === 'blind' && isPendingBlind && (
-    <div className="rounded-xl bg-slate-900/80 border border-slate-800/80 px-4 py-3 space-y-2">
-      <p className="text-[0.7rem] uppercase text-slate-400 tracking-wide">
-        Blind guess
-      </p>
-      <p className="text-sm text-slate-200">
-        Try to guess the legits&apos; word. If you&apos;re correct, you win immediately.
-      </p>
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <input
-          value={blindGuess}
-          onChange={(e) => setBlindGuess(e.target.value)}
-          placeholder="Type your guess…"
-        />
-        <button
-          onClick={handleBlindGuess}
-          disabled={blindSubmitting}
-          className="button-primary sm:self-stretch"
-        >
-          {blindSubmitting ? 'Submitting…' : 'Submit guess'}
-        </button>
-      </div>
-    </div>
-  )}
+          {/* This section handles when the "blind_guess" phase is active for the blind player */}
+          {status === 'blind_guess' && my.role === 'blind' && isPendingBlind && (
+            <div className="rounded-xl bg-slate-900/80 border border-slate-800/80 px-4 py-3 space-y-2">
+              <p className="text-[0.7rem] uppercase text-slate-400 tracking-wide">
+                Blind guess
+              </p>
+              <p className="text-sm text-slate-200">
+                Try to guess the legits&apos; word. If you&apos;re correct, you win immediately.
+              </p>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <input
+                  value={blindGuess}
+                  onChange={(e) => setBlindGuess(e.target.value)}
+                  placeholder="Type your guess…"
+                />
+                <button
+                  onClick={handleBlindGuess}
+                  disabled={blindSubmitting}
+                  className="button-primary sm:self-stretch"
+                >
+                  {blindSubmitting ? 'Submitting…' : 'Submit guess'}
+                </button>
+              </div>
+            </div>
+          )}
 
-  {/* This section makes the "Play again" button always visible once the game starts */}
-  {isHost && status === 'started' && (
-    <button
-      onClick={handleReset}
-      disabled={resetLoading}
-      className="button-secondary self-start"
-    >
-      {resetLoading ? 'Resetting…' : 'Play again'}
-    </button>
-  )}
+          {/* This section makes the "Play again" button always visible once the game starts */}
+          {isHost && status === 'started' && (
+            <button
+              onClick={handleReset}
+              disabled={resetLoading}
+              className="button-secondary self-start"
+            >
+              {resetLoading ? 'Resetting…' : 'Play again'}
+            </button>
+          )}
 
-  {/* This section handles the "Play again" button when the game finishes */}
-  {isHost && status === 'finished' && (
-    <button
-      onClick={handleReset}
-      disabled={resetLoading}
-      className="button-secondary self-start"
-    >
-      {resetLoading ? 'Resetting…' : 'Play again (same lobby)'}
-    </button>
-  )}
-</section>
-
+          {/* This section handles the "Play again" button when the game finishes */}
+          {isHost && status === 'finished' && (
+            <button
+              onClick={handleReset}
+              disabled={resetLoading}
+              className="button-secondary self-start"
+            >
+              {resetLoading ? 'Resetting…' : 'Play again (same lobby)'}
+            </button>
+          )}
+        </section>
       </div>
     </main>
   );
